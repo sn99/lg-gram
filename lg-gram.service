@@ -1,0 +1,38 @@
+[Unit]
+Description=Fixes many issues with the 2022 LG Grams running linux and sets charging limit to 80
+
+# save this script to /etc/systemd/system/lg-gram.service
+# then run:
+# sudo systemctl daemon-reload
+# sudo systemctl enable lg-gram.service
+# sudo systemctl start lg-gram.service
+
+# more documentation: https://www.reddit.com/r/LGgram/comments/150p3rg/critical_bug_affecting_the_2022_lineup_on_linux/
+
+[Service]
+Type=oneshot
+# To resolve the issue with GPE interrupts, causing high temperatures and fan noise even on idle when the laptop is charging through USB-C/TB, 
+# add to the kernel parameters `acpi_mask_gpe=0x6E`. One way of doing it is adding to /etc/default/grub on the last GRUB_CMDLINE_LINUX_DEFAULT options.
+# However, this will cause issues with the keyboard screen brightness shortcuts which can be resolved by adding the Unmask GPE interrupts during boot: 
+# ExecStart=/bin/bash -c "echo 'unmask' > /sys/firmware/acpi/interrupts/gpe6E"
+
+# sets charging limit to 80 to increase battery longevity:
+ExecStart=/bin/bash -c "echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold"
+
+# Disable "Silent mode":
+ExecStart=/bin/bash -c "echo 1 > /sys/devices/platform/lg-laptop/fan_mode"
+
+# Unload the int3403 temp sensor library from the kernel to fix ACPI flood issue:
+ExecStart=/bin/sh -c "rmmod int3403_thermal"
+
+# Disable turbo boost (trade single threaded performance for lower heat output and maybe battery life)
+ExecStart=/bin/sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'
+ExecStop=/bin/sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'
+
+# Fix for thermal throttle issue that on some distros can put the CPU running on low wattages:
+# ExecStart=/bin/bash -c "systemctl disable --now thermald"
+
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
