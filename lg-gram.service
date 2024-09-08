@@ -1,5 +1,5 @@
 [Unit]
-Description=Fixes many issues with the 2022 LG Grams running linux and sets charging limit to 80
+Description=Fixes many issues with the 2022/23/24 LG Grams running linux and sets charging limit to 80 and enabled readermode (bluelight reducer)
 
 # save this script to /etc/systemd/system/lg-gram.service
 # then run:
@@ -7,7 +7,10 @@ Description=Fixes many issues with the 2022 LG Grams running linux and sets char
 # sudo systemctl enable lg-gram.service
 # sudo systemctl start lg-gram.service
 
-# more documentation: https://www.reddit.com/r/LGgram/comments/150p3rg/critical_bug_affecting_the_2022_lineup_on_linux/
+# More documentation: 
+# - https://www.reddit.com/r/LGgram/comments/150p3rg/critical_bug_affecting_the_2022_lineup_on_linux/
+# - https://www.reddit.com/r/linuxhardware/comments/x97m6l/fedora_lg_gram_16_2022_12th_gen_alder_lake/
+# - https://www.kernel.org/doc/html/latest/admin-guide/laptops/lg-laptop.html
 
 [Service]
 Type=oneshot
@@ -16,18 +19,20 @@ Type=oneshot
 # However, this will cause issues with the keyboard screen brightness shortcuts which can be resolved by adding the Unmask GPE interrupts during boot: 
 # ExecStart=/bin/bash -c "echo 'unmask' > /sys/firmware/acpi/interrupts/gpe6E"
 
-# sets charging limit to 80 to increase battery longevity:
+# Sets charging limit to 80 to increase battery longevity:
 ExecStart=/bin/bash -c "echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold"
 
 # Disable "Silent mode":
 ExecStart=/bin/bash -c "echo 1 > /sys/devices/platform/lg-laptop/fan_mode"
 
+# Enable "Reader mode":
+ExecStart=/bin/bash -c "echo 1 > /sys/devices/platform/lg-laptop/reader_mode"
+
+# Set cpu profile to Performance
+ExecStart=/bin/bash -c "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor"
+
 # Unload the int3403 temp sensor library from the kernel to fix ACPI flood issue:
 ExecStart=/bin/sh -c "rmmod int3403_thermal"
-
-# Disable turbo boost (trade single threaded performance for lower heat output and maybe battery life)
-ExecStart=/bin/sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'
-ExecStop=/bin/sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'
 
 # Fix for thermal throttle issue that on some distros can put the CPU running on low wattages:
 # ExecStart=/bin/bash -c "systemctl disable --now thermald"
